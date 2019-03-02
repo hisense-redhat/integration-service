@@ -1,0 +1,10 @@
+camel:
+  springboot:
+    # The Camel context name
+    name: Camel-Logistics
+  component:
+    servlet:
+      mapping:
+        enabled: true
+        context-path: /rest/*
+

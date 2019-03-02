@@ -1,0 +1,146 @@
+= 集成服务
+:toc: manual
+
+== 规则服务集成
+
+=== 本地测试
+
+[source, text]
+.*1. 编译*
+----
+$ cd logistics/
+$ mvn clean install
+----
+
+[source, text]
+.*2. 运行*
+----
+$ java -jar target/logistics-1.0.0.jar
+----
+
+[source, text]
+.*3. 发送 Post 请求测试*
+----
+$ curl -k http://localhost:8080/rest/service/transactions -X POST -d 'Acme,68.64,true;Biker,17.23,false;Coder,35.02,true;Dancer,,,12.3,false' -H 'content-type: text/html'
+Processed the transactions data
+----
+
+[source, text]
+.*4. 查看 Camel Console 日志输出*
+----
+19:12:58.221 [XNIO-3 task-1] INFO  CamelSplitRoute - Received Request: Acme,68.64,true;Biker,17.23,false;Coder,35.02,true;Dancer,,,12.3,false
+19:12:58.514 [XNIO-3 task-1] INFO  CamelSplitRoute - >> Converted JSON: {"merchant":"Acme","weight":68.64,"expedited":true,"destination":null}
+19:12:58.515 [XNIO-3 task-1] INFO  CamelProcessRoute - Start Processing: {"merchant":"Acme","weight":68.64,"expedited":true,"destination":null}
+19:12:58.516 [XNIO-3 task-1] INFO  CamelProcessRoute - After Processing: { "commands":[ { "insert":{ "object":{ "com.myspace.logistics.Order":{"merchant":"Acme","weight":68.64,"expedited":true,"destination":null} }, "out-identifier":"order" } }, { "fire-all-rules":{ } } ]}
+19:12:58.517 [XNIO-3 task-1] INFO  CamelRulesRoute - Start Invoke Rules REST Service Rendered By Kie Server
+19:12:58.684 [XNIO-3 task-1] INFO  CamelRulesRoute - Response from Kie Server: {
+  "type" : "SUCCESS",
+  "msg" : "Container logistics_1.0.0 successfully called.",
+  "result" : {
+    "execution-results" : {
+      "results" : [ {
+        "value" : {"com.myspace.logistics.Order":{
+  "merchant" : "Acme",
+  "weight" : 68.64,
+  "expedited" : true,
+  "destination" : "仓库 A"
+}},
+        "key" : "order"
+      } ],
+      "facts" : [ {
+        "value" : {"org.drools.core.common.DefaultFactHandle":{
+  "external-form" : "0:7:1658398623:1658398623:14:DEFAULT:NON_TRAIT:com.myspace.logistics.Order"
+}},
+        "key" : "order"
+      } ]
+    }
+  }
+}
+19:12:58.687 [XNIO-3 task-1] INFO  CamelSplitRoute - >> Converted JSON: {"merchant":"Biker","weight":17.23,"expedited":false,"destination":null}
+19:12:58.687 [XNIO-3 task-1] INFO  CamelProcessRoute - Start Processing: {"merchant":"Biker","weight":17.23,"expedited":false,"destination":null}
+19:12:58.688 [XNIO-3 task-1] INFO  CamelProcessRoute - After Processing: { "commands":[ { "insert":{ "object":{ "com.myspace.logistics.Order":{"merchant":"Biker","weight":17.23,"expedited":false,"destination":null} }, "out-identifier":"order" } }, { "fire-all-rules":{ } } ]}
+19:12:58.689 [XNIO-3 task-1] INFO  CamelRulesRoute - Start Invoke Rules REST Service Rendered By Kie Server
+19:12:58.711 [XNIO-3 task-1] INFO  CamelRulesRoute - Response from Kie Server: {
+  "type" : "SUCCESS",
+  "msg" : "Container logistics_1.0.0 successfully called.",
+  "result" : {
+    "execution-results" : {
+      "results" : [ {
+        "value" : {"com.myspace.logistics.Order":{
+  "merchant" : "Biker",
+  "weight" : 17.23,
+  "expedited" : false,
+  "destination" : "仓库 B"
+}},
+        "key" : "order"
+      } ],
+      "facts" : [ {
+        "value" : {"org.drools.core.common.DefaultFactHandle":{
+  "external-form" : "0:8:972246974:972246974:16:DEFAULT:NON_TRAIT:com.myspace.logistics.Order"
+}},
+        "key" : "order"
+      } ]
+    }
+  }
+}
+19:12:58.715 [XNIO-3 task-1] INFO  CamelSplitRoute - >> Converted JSON: {"merchant":"Coder","weight":35.02,"expedited":true,"destination":null}
+19:12:58.716 [XNIO-3 task-1] INFO  CamelProcessRoute - Start Processing: {"merchant":"Coder","weight":35.02,"expedited":true,"destination":null}
+19:12:58.716 [XNIO-3 task-1] INFO  CamelProcessRoute - After Processing: { "commands":[ { "insert":{ "object":{ "com.myspace.logistics.Order":{"merchant":"Coder","weight":35.02,"expedited":true,"destination":null} }, "out-identifier":"order" } }, { "fire-all-rules":{ } } ]}
+19:12:58.717 [XNIO-3 task-1] INFO  CamelRulesRoute - Start Invoke Rules REST Service Rendered By Kie Server
+19:12:58.734 [XNIO-3 task-1] INFO  CamelRulesRoute - Response from Kie Server: {
+  "type" : "SUCCESS",
+  "msg" : "Container logistics_1.0.0 successfully called.",
+  "result" : {
+    "execution-results" : {
+      "results" : [ {
+        "value" : {"com.myspace.logistics.Order":{
+  "merchant" : "Coder",
+  "weight" : 35.02,
+  "expedited" : true,
+  "destination" : 仓库 B"
+}},
+        "key" : "order"
+      } ],
+      "facts" : [ {
+        "value" : {"org.drools.core.common.DefaultFactHandle":{
+  "external-form" : "0:9:1882781290:1882781290:18:DEFAULT:NON_TRAIT:com.myspace.logistics.Order"
+}},
+        "key" : "order"
+      } ]
+    }
+  }
+}
+19:12:58.738 [XNIO-3 task-1] INFO  CamelSplitRoute - >> Exception : Dancer,,,12.3,false
+----
+
+=== 部署到 OpenShift
+
+[source, text]
+.*1. 部署到 OpenShift*
+----
+$ mvn fabric8:deploy -Popenshift
+----
+
+[source, text]
+.*2. 访问测试*
+----
+$ curl -k http://logistics-integration-service.apps.example.com/rest/service/transactions -X POST -d 'Acme,68.64,true;Biker,17.23,false;Coder,35.02,true;Dancer,,,12.3,false' -H 'content-type: text/html'
+Processed the transactions data
+----
+
+[source, text]
+.*3. 查看 Camel Console 日志输出，结果类似本地运行输出*
+
+== REST SOAP 协议转换
+
+=== 部署 SOAP 服务
+
+http://ksoong.org/agile-integration/content/fuse/getstart.html#_mock_soap
+
+=== 部署 soap2rest
+
+http://ksoong.org/agile-integration/content/fuse/gs-fis-soap2rest.html
+
+== SAP 集成
+
+https://github.com/fusesource/sap-quickstarts/tree/master/spring-boot

@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "properties": {
+    "merchant": {
+      "type": "string"
+    },
+    "weight": {
+      "type": "double"
+    },
+    "expedited": {
+      "type": "boolean"
+    },
+    "destination": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "merchant",
+    "weight"
+  ]
+}

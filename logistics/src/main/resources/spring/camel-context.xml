@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:camel="http://camel.apache.org/schema/spring"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+    <!-- Define a traditional camel context here -->
+    <bean class="com.sample.processor.WrapProcessor" id="typeConvertService"/>
+    <camelContext id="camel" xmlns="http://camel.apache.org/schema/spring">
+        <!--  -->
+        <propertyPlaceholder id="properties" location="route.properties"/>
+        
+        <endpoint id="csv2json" uri="dozer:csv2json2?sourceModel=org.acme.Transaction&amp;targetModel=com.myspace.logistics.Order&amp;marshalId=json&amp;unmarshalId=csv&amp;mappingFile=transformation.xml"/>
+        <!-- CSV Input & JSon OutPut DataFormat -->
+        <dataFormats>
+            <bindy classType="org.acme.Transaction" id="csv" type="Csv"/>
+            <json id="json" library="Jackson"/>
+        </dataFormats>
+        <restConfiguration bindingMode="off" component="servlet" contextPath="/rest"/>
+        <rest apiDocs="true" id="logistics-rest" path="/service">
+            <post id="logistics-post" uri="/transactions">
+                <to uri="direct:inbox"/>
+            </post>
+        </rest>
+        
+        <route id="CamelSplitRoute" streamCache="true">
+            <!-- Consume files from input directory -->
+            <from id="_from1" uri="direct:inbox"/>
+            <log id="_log4" message="Received Request: ${body}"/>
+            <onException id="_onException1">
+                <exception>java.lang.IllegalArgumentException</exception>
+                <handled>
+                    <constant>true</constant>
+                </handled>
+                <log id="_log1" message=">> Exception : ${body}"/>
+            </onException>
+            <split id="_split1">
+                <tokenize token=";"/>
+                <to id="_to2" ref="csv2json"/>
+                <log id="_log2" message=">> Converted JSON: ${body}"/>
+                <to uri="direct:jsonProcess"/>
+            </split>
+            <transform id="_transform1">
+                <constant>Processed the transactions data</constant>
+            </transform>
+        </route>
+        
+        <route id="CamelProcessRoute" streamCache="true">
+            <from id="_from2" uri="direct:jsonProcess"/>
+            <log id="_log3" message="Start Processing: ${body}"/>
+            <to id="_to3" uri="typeConvertService"/>
+            <log id="_log5" message="After Processing: ${body}"/>
+            <to uri="direct:invokeRuleService"/>
+        </route>
+        
+        <route id="CamelRulesRoute" streamCache="true">
+            <from id="_from3" uri="direct:invokeRuleService"/>
+            <log id="_log6" message="Start Invoke Rules REST Service Rendered By Kie Server"/>
+            <setHeader headerName="CamelHttpMethod" id="_setHeader1">
+                <constant>POST</constant>
+            </setHeader>
+            <setHeader headerName="Authorization" id="_setHeader2">
+                <constant>Basic ZXhlY3V0aW9uVXNlcjpSZWRIYXQ=</constant>
+            </setHeader>
+            <setHeader headerName="accept" id="_setHeader3">
+                <constant>application/json</constant>
+            </setHeader>
+            <setHeader headerName="content-type" id="_setHeader4">
+                <constant>application/json</constant>
+            </setHeader>
+            <to id="_to4" uri="http4://{{kie-server-host}}/services/rest/server/containers/instances/{{kie-server-container-id}}?bridgeEndpoint=true"/>
+            <setBody id="_setBody1">
+                <simple>${body}</simple>
+            </setBody>
+            <log id="_log7" message="Response from Kie Server: ${body}"/>
+        </route>
+    </camelContext>
+</beans>
